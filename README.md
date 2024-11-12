@@ -1,186 +1,134 @@
+File Management API
+
 # File Management API
 
-## Description
-
-This API provides functionality for managing files, integrating SQLite and PostgreSQL databases, and securing endpoints using JWT authentication.
+This is a simple File Management System that allows users to manage file metadata using a PostgreSQL database and interact with the system through a Node.js back end. A user-friendly front end is included for listing, adding, downloading, and deleting files.
 
 ## Features
 
-- **Directory Listing:** Lists files in a specified local directory.
-- **SQLite Database Integration:** Adds files to a lightweight SQLite database.
-- **PostgreSQL Integration:** Stores and retrieves file information in a Dockerized PostgreSQL database.
-- **JWT Authentication:** Secures specific endpoints with token-based authentication.
+- List all files with metadata such as file name, size, and upload date.
+- Add metadata for files.
+- Download files stored in the local **Database** directory.
+- Delete files and their associated metadata.
 
-## Prerequisites
+## Project Setup
 
-- **Node.js** and **npm** installed
-- **Docker** and **Docker Compose** installed
-- **SQLite** installed locally
+### Prerequisites
 
-## Setup
+- Node.js (v14 or higher)
+- Docker and Docker Compose
 
-1.  Clone the repository:
-    ```bash
-        git clone https://github.com/yourusername/my-api-project.git
-        cd my-api-project
-    ```
-2.  Install dependencies:
-    ```bash
-        npm install
-    ```
-3.  Start the PostgreSQL database:
-    ```bash
-        docker-compose up -d
-    ```
-4.  Start the server:
-    ```bash
-        node server.js
-    ```
+### Clone the Repository
+
+```bash
+    git clone https://github.com/yourusername/your-repo-name.git             cd your-repo-name`
+```
+
+### Run the Project
+
+1.  Start the PostgreSQL database and back end using Docker Compose:
+
+```bash
+    docker-compose up -d
+```
+
+2.  Install project dependencies:
+
+```bash
+    npm install
+```
+
+3.  Start the server:
+
+```bash
+    node server.js
+```
+
+4.  Access the UI at:
+
+```bash
+    http://localhost:3000
+```
+
+### Database Configuration
+
+The PostgreSQL database is automatically configured via Docker Compose. If you wish to manually configure it, ensure the following:
+
+- Database: `yourdatabase` <--- replace with name of your Database
+- User: `youruser` <--- replace with name of your user
+- Password: `yourpassword` <--- replace with your password
 
 ## API Endpoints
 
-### 1\. Root Endpoint
+### 1\. List Files
 
-**URL:** `/`
+Retrieve a list of all files with metadata.
 
-**Method:** `GET`
+        `GET /files`
 
-**Description:** Check if the API is running.
 
-```bash
-    API is running!
-```
+#### Example Response:
 
-#### Example `curl` Command:
+        `[             {                 "id": 1,                 "name": "example.txt",                 "size": 1024,                 "upload_date": "2024-11-12T10:30:00.000Z"             }         ]`
 
-```bash
-    curl http://localhost:3000/
-```
 
-### 2\. List Files in a Directory
+### 2\. Add File Metadata
 
-**URL:** `/files`
+Add metadata for a new file.
 
-**Method:** `GET`
+        `POST /add-file         Content-Type: application/json         {             "name": "example.txt",             "size": 1024         }`
 
-**Description:** Lists files in a specified local directory.
 
-```bash
-    { "files": ["example.txt"] }
-```
+#### Example Response:
 
-#### Example `curl` Command:
+        `File metadata added successfully.`
 
-```bash
-    curl http://localhost:3000/files
-```
 
-### 3\. Add a File to SQLite
+### 3\. Download File
 
-**URL:** `/add-file`
+Download a file from the **Database** directory.
 
-**Method:** `POST`
+        `GET /download/:name`
 
-**Description:** Adds a file to the SQLite database.
+
+#### Example Usage:
 
 ```bash
-        {
-            "name": "example.txt"
-        }
+    curl http://localhost:3000/download/example.txt`
 ```
 
-#### Example `curl` Command:
+### 4\. Delete File
+
+Delete a file and its associated metadata.
+
+        `DELETE /delete/:name`
+
+
+#### Example Usage:
 
 ```bash
-        curl -X POST -H "Content-Type: application/json" \
-        -d '{"name": "example.txt"}' \
-        http://localhost:3000/add-file
+    curl -X DELETE http://localhost:3000/delete/example.txt
 ```
 
-### 4\. List Files from PostgreSQL
+#### Example Response:
 
-**URL:** `/db-files`
+        `File deleted successfully.`
 
-**Method:** `GET`
 
-**Description:** Retrieves file information from the PostgreSQL database.
+## Technologies Used
 
-```bash
-        [
-            { "id": 1, "name": "example.txt" }
-        ]
-```
+- **Back End:** Node.js, Express.js
+- **Database:** PostgreSQL (via Docker)
+- **Front End:** HTML, CSS, JavaScript
 
-#### Example `curl` Command:
+## Development Notes
 
-```bash
-    curl http://localhost:3000/db-files
-```
+- Physical files are stored in the **Database** directory.
+- File metadata is stored in the PostgreSQL database.
+- Pagination and filtering features can be added for scalability.
 
-### 5\. Generate a JWT
+## Future Enhancements
 
-**URL:** `/login`
-
-**Method:** `POST`
-
-**Description:** Generates a JSON Web Token (JWT) for authentication.
-
-```bash
-    {
-      "username": "testuser"
-    }
-```
-
-#### Example `curl` Command:
-
-```bash
-    curl -X POST -H "Content-Type: application/json" \
-    -d '{"username": "testuser"}' \
-    http://localhost:3000/login
-```
-
-### 6\. Access a Secure Endpoint
-
-**URL:** `/secure-endpoint`
-
-**Method:** `GET`
-
-**Description:** Access a secure endpoint using a JWT.
-
-```bash
-    This is a secure endpoint!
-```
-
-#### Example `curl` Command:
-
-```bash
-    curl -H "Authorization: Bearer <your-jwt-token>" \
-    http://localhost:3000/secure-endpoint
-```
-
-## Automated Testing
-
-A test script (`test-api.sh`) is included for automating the testing process.
-
-### How to Use the Test Script
-
-1.  Ensure `jq` (a JSON parser for the command line) is installed:
-
-```bash
-        sudo dnf install jq
-```
-
-2.  Run the script:
-
-```bash
-        bash test-api.sh
-```
-
-3.  The script performs the following:
-    - Generates a JWT.
-    - Tests `/secure-endpoint` with the generated token.
-    - Tests `/files` and `/db-files` endpoints with the token.
-
-## License
-
-This project is licensed under the MIT License. Feel free to use and modify it.
+- Add authentication using JWT for secure access.
+- Enable file uploads directly from the UI.
+- Support cloud storage options (e.g., AWS S3).
