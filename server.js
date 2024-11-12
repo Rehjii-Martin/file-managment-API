@@ -1,46 +1,18 @@
-// Import required modules
 const express = require('express');
+const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
-const { Pool } = require('pg');
-const jwt = require('jsonwebtoken');
 
-// Initialize Express app
 const app = express();
 const PORT = 3000;
 
-// Middleware to parse JSON requests
+// Middleware for parsing JSON
 app.use(express.json());
 
-// Serve statitc files from public folder
+// Serve static files from the public folder
 app.use(express.static('public'));
 
-// JWT Secret Key
-const secret = 'your-secret-key';
-
-// Authentication Middleware
-const authenticate = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    if (!authHeader) {
-        console.log('No Authorization header provided');
-        return res.status(403).send('Token required.');
-    }
-
-    const token = authHeader.split(' ')[1];
-    console.log('Received Token:', token);
-
-    jwt.verify(token, 'your-secret-key', (err, decoded) => {
-        if (err) {
-            console.log('Token verification failed:', err.message);
-            return res.status(401).send('Invalid token.');
-        }
-        console.log('Token decoded successfully:', decoded);
-        req.user = decoded;
-        next();
-    });
-};
-// PostgreSQL Pool Setup (for Virtualized Database)
+// PostgreSQL Database Setup
 const pool = new Pool({
     user: 'youruser',
     host: 'localhost',
@@ -49,99 +21,93 @@ const pool = new Pool({
     port: 5432,
 });
 
-// Automatically create the 'files' table if it doesn't exist
+// Ensure the "Database" directory exists
+const databaseDirectory = path.join(__dirname, 'Database');
+if (!fs.existsSync(databaseDirectory)) {
+    fs.mkdirSync(databaseDirectory);
+    console.log(`Created directory: ${databaseDirectory}`);
+}
+
+// Ensure the "files" table exists with the correct schema
 pool.query(`
     CREATE TABLE IF NOT EXISTS files (
         id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL
-    );
-`, (err, res) => {
-    if (err) {
-        console.error('Error creating table:', err);
-    } else {
-        console.log('Table "files" is ready.');
-    }
+        name TEXT NOT NULL,
+        path TEXT NOT NULL,
+        size INTEGER NOT NULL DEFAULT 0,
+        upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`).then(() => {
+    console.log('PostgreSQL table "files" is ready.');
+}).catch(err => {
+    console.error('Error creating PostgreSQL table:', err.message);
 });
 
-// SQLite Local Database Setup (Optional)
-const db = new sqlite3.Database('./database.db');
-db.serialize(() => {
-    db.run('CREATE TABLE IF NOT EXISTS files (id INTEGER PRIMARY KEY, name TEXT)');
-});
+// Routes
 
-// API Endpoints
-
-// Root Endpoint
+// Root Route
 app.get('/', (req, res) => {
     res.send('API is running!');
 });
 
-// File System Endpoint: List files in a directory
-app.get('/files', (req, res) => {
-    const directoryPath = '/home/ispec0/API Database';
-    fs.readdir(directoryPath, (err, files) => {
-        if (err) {
-            return res.status(500).send('Unable to scan directory.');
-        }
-        res.json({ files });
-    });
-});
-
-// Add a file to the SQLite database
-
-app.post('/add-file', (req, res) => {
-    const { name } = req.body;
-    const directoryPath = path.join(__dirname, 'Database');
-    const filePath = path.join(directoryPath, name);
-
-    
-// Ensure the 'Database' directory exists
-if (!fs.existsSync(directoryPath)) {
-    fs.mkdirSync(directoryPath);
-    console.log(`Created directory: ${directoryPath}`);
-}
-
-    // Create the file in the directory
-    fs.writeFile(filePath, '', (err) => {
-        if (err) {
-            return res.status(500).send('Failed to create file in directory.');
-        }
-
-        // Insert into SQLite database
-        db.run('INSERT INTO files(name) VALUES(?)', [name], (err) => {
-            if (err) {
-                return res.status(500).send('Failed to add file to database.');
-            }
-            res.send('File added successfully.');
-        });
-    });
-});
-
-
-
-// List files from PostgreSQL (Virtualized Database)
-app.get('/db-files', async (req, res) => {
+// List Files with Metadata
+app.get('/files', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM files');
+        const result = await pool.query('SELECT id, name, size, upload_date FROM files');
         res.json(result.rows);
     } catch (err) {
-        res.status(500).send('Error fetching files from database.');
+        console.error('Error fetching files:', err.message);
+        res.status(500).send('Failed to fetch files.');
     }
 });
 
-// Secure Endpoint Example
-app.use('/secure-endpoint', authenticate, (req, res) => {
-    res.send('This is a secure endpoint!');
+// Add File Metadata
+app.post('/add-file', async (req, res) => {
+    const { name, size } = req.body; // Assume size is sent from the UI
+    const filePath = `/Database/${name}`;
+    try {
+        await pool.query(
+            'INSERT INTO files (name, path, size, upload_date) VALUES ($1, $2, $3, NOW())',
+            [name, filePath, size]
+        );
+        res.send('File metadata added successfully.');
+    } catch (err) {
+        console.error('Error adding file metadata to PostgreSQL:', err.message);
+        res.status(500).send('Failed to add file metadata.');
+    }
 });
 
-// JWT Login: Generate token for a user
-app.post('/login', (req, res) => {
-    const { username } = req.body;
-    const token = jwt.sign({ username }, secret, { expiresIn: '1h' });
-    res.json({ token });
+// Download File
+app.get('/download/:name', (req, res) => {
+    const filePath = path.join(databaseDirectory, req.params.name);
+    res.download(filePath, (err) => {
+        if (err) {
+            console.error('Error downloading file:', err.message);
+            res.status(500).send('Failed to download file.');
+        }
+    });
 });
 
-// Start the server
+// Delete File
+app.delete('/delete/:name', async (req, res) => {
+    const { name } = req.params;
+    try {
+        // Remove the physical file
+        const filePath = path.join(databaseDirectory, name);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        // Remove metadata from the database
+        await pool.query('DELETE FROM files WHERE name = $1', [name]);
+        res.send('File deleted successfully.');
+    } catch (err) {
+        console.error('Error deleting file:', err.message);
+        res.status(500).send('Failed to delete file.');
+    }
+});
+
+// Start the Server
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });

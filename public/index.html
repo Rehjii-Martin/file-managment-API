@@ -1,50 +1,63 @@
 <!doctype html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>File Management API</title>
     <link rel="stylesheet" href="style.css" />
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="container">
-        <h1>File Management API</h1>
+      <h1>File Management System</h1>
 
-        <div class="section">
-            <h2>Generate JWT</h2>
-            <input type="text" id="username" placeholder="Enter username" />
-            <button onclick="generateToken()">Generate Token</button>
-            <p id="token-display"></p>
-        </div>
+      <!-- List Files -->
+      <div class="section">
+        <h2>Database Files</h2>
+        <button onclick="listFiles()">Refresh List</button>
+        <ul id="file-list">
+          <!-- Files will be listed here dynamically -->
+        </ul>
+      </div>
 
-        <div class="section">
-            <h2>List Files</h2>
-            <button onclick="listFiles()">Get Files</button>
-            <ul id="files-list"></ul>
-        </div>
+      <!-- Add File Metadata -->
+      <div class="section">
+        <h2>Add File Metadata</h2>
+        <input type="text" id="file-name" placeholder="Enter file name" />
+        <input
+          type="number"
+          id="file-size"
+          placeholder="Enter file size (bytes)"
+        />
+        <button onclick="addFile()">Add Metadata</button>
+        <p id="add-file-response"></p>
+      </div>
 
-        <div class="section">
-            <h2>Add a File</h2>
-            <input type="text" id="filename" placeholder="Enter file name" />
-            <button onclick="addFile()">Add File</button>
-            <p id="add-file-response"></p>
-        </div>
+      <!-- Download File -->
+      <div class="section">
+        <h2>Download File</h2>
+        <input
+          type="text"
+          id="download-name"
+          placeholder="Enter file name to download"
+        />
+        <button onclick="downloadFile()">Download</button>
+        <p id="download-response"></p>
+      </div>
 
-        <div class="section">
-            <h2>List Files from Database</h2>
-            <button onclick="listDbFiles()">Get Database Files</button>
-            <ul id="db-files-list"></ul>
-        </div>
-
-        <div class="section">
-            <h2>Access Secure Endpoint</h2>
-            <button onclick="accessSecureEndpoint()">Access Secure Endpoint</button>
-            <p id="secure-endpoint-response"></p>
-        </div>
+      <!-- Delete File -->
+      <div class="section">
+        <h2>Delete File</h2>
+        <input
+          type="text"
+          id="delete-name"
+          placeholder="Enter file name to delete"
+        />
+        <button onclick="deleteFile()">Delete</button>
+        <p id="delete-response"></p>
+      </div>
     </div>
-    <script src="app.js"></script>
-</body>
 
+    <script src="app.js"></script>
+  </body>
 </html>

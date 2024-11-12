@@ -1,88 +1,75 @@
 const API_URL = 'http://localhost:3000';
-let token = '';
 
-// Generate JWT
-function generateToken() {
-    const username = document.getElementById('username').value;
-    if (!username) {
-        alert('Please enter a username.');
-        return;
-    }
-    fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
-    })
-    .then(response => response.json())
-    .then(data => {
-        token = data.token;
-        document.getElementById('token-display').innerText = `Token: ${token}`;
-    })
-    .catch(err => console.error('Error generating token:', err));
-}
-
-// List Files
+// List files with metadata
 function listFiles() {
     fetch(`${API_URL}/files`)
         .then(response => response.json())
         .then(data => {
-            const filesList = document.getElementById('files-list');
-            filesList.innerHTML = '';
-            data.files.forEach(file => {
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = ''; // Clear existing list
+            data.forEach(file => {
                 const li = document.createElement('li');
-                li.innerText = file;
-                filesList.appendChild(li);
+                li.innerHTML = `
+                    <strong>Name:</strong> ${file.name} |
+                    <strong>Size:</strong> ${file.size} bytes |
+                    <strong>Uploaded:</strong> ${file.upload_date}
+                `;
+                fileList.appendChild(li);
             });
         })
-        .catch(err => console.error('Error fetching files:', err));
+        .catch(err => console.error('Error listing files:', err));
 }
 
-// Add File to SQLite
+// Add file metadata
 function addFile() {
-    const filename = document.getElementById('filename').value;
-    if (!filename) {
-        alert('Please enter a file name.');
+    const name = document.getElementById('file-name').value;
+    const size = document.getElementById('file-size').value;
+
+    if (!name || !size) {
+        alert('Please enter both name and size.');
         return;
     }
+
     fetch(`${API_URL}/add-file`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: filename })
+        body: JSON.stringify({ name, size: parseInt(size, 10) })
     })
-    .then(response => response.text())
-    .then(data => {
-        document.getElementById('add-file-response').innerText = data;
-    })
-    .catch(err => console.error('Error adding file:', err));
+        .then(response => response.text())
+        .then(data => {
+            document.getElementById('add-file-response').innerText = data;
+            listFiles(); // Refresh the list
+        })
+        .catch(err => console.error('Error adding file:', err));
 }
 
-// List Files from PostgreSQL
-function listDbFiles() {
-    fetch(`${API_URL}/db-files`, {
-        headers: { Authorization: `Bearer ${token}` }
-    })
-    .then(response => response.json())
-    .then(data => {
-        const dbFilesList = document.getElementById('db-files-list');
-        dbFilesList.innerHTML = '';
-        data.forEach(file => {
-            const li = document.createElement('li');
-            li.innerText = `${file.id}: ${file.name}`;
-            dbFilesList.appendChild(li);
-        });
-    })
-    .catch(err => console.error('Error fetching database files:', err));
+// Download file
+function downloadFile() {
+    const name = document.getElementById('download-name').value;
+
+    if (!name) {
+        alert('Please enter a file name to download.');
+        return;
+    }
+
+    window.location.href = `${API_URL}/download/${name}`;
 }
 
-// Access Secure Endpoint
-function accessSecureEndpoint() {
-    fetch(`${API_URL}/secure-endpoint`, {
-        headers: { Authorization: `Bearer ${token}` }
-    })
-    .then(response => response.text())
-    .then(data => {
-        document.getElementById('secure-endpoint-response').innerText = data;
-    })
-    .catch(err => console.error('Error accessing secure endpoint:', err));
+// Delete file
+function deleteFile() {
+    const name = document.getElementById('delete-name').value;
+
+    if (!name) {
+        alert('Please enter a file name to delete.');
+        return;
+    }
+
+    fetch(`${API_URL}/delete/${name}`, { method: 'DELETE' })
+        .then(response => response.text())
+        .then(data => {
+            document.getElementById('delete-response').innerText = data;
+            listFiles(); // Refresh the list
+        })
+        .catch(err => console.error('Error deleting file:', err));
 }
 
