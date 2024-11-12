@@ -1,5 +1,3 @@
-File Management API Documentation body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f9f9f9; color: #333; } h1, h2, h3 { color: #444; } code { background-color: #eee; padding: 2px 4px; border-radius: 4px; font-family: "Courier New", Courier, monospace; } pre { background-color: #eee; padding: 10px; border-radius: 4px; overflow: auto; } .endpoint { margin-bottom: 20px; }
-
 # File Management API
 
 ## Description
