@@ -13,6 +13,9 @@ const PORT = 3000;
 // Middleware to parse JSON requests
 app.use(express.json());
 
+// Serve statitc files from public folder
+app.use(express.static('public'));
+
 // JWT Secret Key
 const secret = 'your-secret-key';
 
@@ -85,15 +88,36 @@ app.get('/files', (req, res) => {
 });
 
 // Add a file to the SQLite database
+
 app.post('/add-file', (req, res) => {
     const { name } = req.body;
-    db.run('INSERT INTO files(name) VALUES(?)', [name], (err) => {
+    const directoryPath = path.join(__dirname, 'Database');
+    const filePath = path.join(directoryPath, name);
+
+    
+// Ensure the 'Database' directory exists
+if (!fs.existsSync(directoryPath)) {
+    fs.mkdirSync(directoryPath);
+    console.log(`Created directory: ${directoryPath}`);
+}
+
+    // Create the file in the directory
+    fs.writeFile(filePath, '', (err) => {
         if (err) {
-            return res.status(500).send('Failed to add file.');
+            return res.status(500).send('Failed to create file in directory.');
         }
-        res.send('File added successfully.');
+
+        // Insert into SQLite database
+        db.run('INSERT INTO files(name) VALUES(?)', [name], (err) => {
+            if (err) {
+                return res.status(500).send('Failed to add file to database.');
+            }
+            res.send('File added successfully.');
+        });
     });
 });
+
+
 
 // List files from PostgreSQL (Virtualized Database)
 app.get('/db-files', async (req, res) => {

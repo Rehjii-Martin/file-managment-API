@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>File Management API</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div class="container">
+        <h1>File Management API</h1>
+
+        <div class="section">
+            <h2>Generate JWT</h2>
+            <input type="text" id="username" placeholder="Enter username" />
+            <button onclick="generateToken()">Generate Token</button>
+            <p id="token-display"></p>
+        </div>
+
+        <div class="section">
+            <h2>List Files</h2>
+            <button onclick="listFiles()">Get Files</button>
+            <ul id="files-list"></ul>
+        </div>
+
+        <div class="section">
+            <h2>Add a File</h2>
+            <input type="text" id="filename" placeholder="Enter file name" />
+            <button onclick="addFile()">Add File</button>
+            <p id="add-file-response"></p>
+        </div>
+
+        <div class="section">
+            <h2>List Files from Database</h2>
+            <button onclick="listDbFiles()">Get Database Files</button>
+            <ul id="db-files-list"></ul>
+        </div>
+
+        <div class="section">
+            <h2>Access Secure Endpoint</h2>
+            <button onclick="accessSecureEndpoint()">Access Secure Endpoint</button>
+            <p id="secure-endpoint-response"></p>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+
+</html>
