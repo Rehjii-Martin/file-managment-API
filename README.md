@@ -69,13 +69,13 @@ Retrieve a list of all files with metadata.
 
 #### Example Response:
 
-        `[             {                 "id": 1,                 "name": "example.txt",                 "size": 1024,                 "upload_date": "2024-11-12T10:30:00.000Z"             }         ]`
+        `[{"id": 1,"name": "example.txt","size": 1024,"upload_date": "2024-11-12T10:30:00.000Z"}]
 
 ### 2\. Add File Metadata
 
 Add metadata for a new file.
 
-        `POST /add-file         Content-Type: application/json         {             "name": "example.txt",             "size": 1024         }`
+        `POST /add-file Content-Type: application/json{ "name": "example.txt","size": 1024}
 
 #### Example Response:
 
