@@ -21,7 +21,8 @@ This is a simple File Management System that allows users to manage file metadat
 ### Clone the Repository
 
 ```bash
-    git clone https://github.com/yourusername/your-repo-name.git             cd your-repo-name`
+    git clone https://github.com/Rehjii-Martin/file-managment-API.git
+    cd file-managment-API
 ```
 
 ### Run the Project
@@ -66,11 +67,9 @@ Retrieve a list of all files with metadata.
 
         `GET /files`
 
-
 #### Example Response:
 
         `[             {                 "id": 1,                 "name": "example.txt",                 "size": 1024,                 "upload_date": "2024-11-12T10:30:00.000Z"             }         ]`
-
 
 ### 2\. Add File Metadata
 
@@ -78,18 +77,15 @@ Add metadata for a new file.
 
         `POST /add-file         Content-Type: application/json         {             "name": "example.txt",             "size": 1024         }`
 
-
 #### Example Response:
 
         `File metadata added successfully.`
-
 
 ### 3\. Download File
 
 Download a file from the **Database** directory.
 
         `GET /download/:name`
-
 
 #### Example Usage:
 
@@ -103,7 +99,6 @@ Delete a file and its associated metadata.
 
         `DELETE /delete/:name`
 
-
 #### Example Usage:
 
 ```bash
@@ -113,7 +108,6 @@ Delete a file and its associated metadata.
 #### Example Response:
 
         `File deleted successfully.`
-
 
 ## Technologies Used
 
