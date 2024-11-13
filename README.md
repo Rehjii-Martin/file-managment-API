@@ -107,7 +107,7 @@ Upload a file to the Database directory and store its metadata.
     curl -X POST -F "file=@example.txt" http://localhost:9600/upload
 ```
 
-### 4\. Delete File
+### 5\. Delete File
 
 Delete a file and its associated metadata.
 
