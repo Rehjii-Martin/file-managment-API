@@ -166,4 +166,32 @@ async function deleteFile(event) {
         console.error(err);
     }
 }
+// Upload File
+async function uploadFile(event) {
+    event.preventDefault();
+
+    const fileInput = document.getElementById('file-upload');
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('jwt')}`,
+            },
+            body: formData,
+        });
+
+        if (response.ok) {
+            document.getElementById('upload-response').innerText = 'File uploaded successfully!';
+        } else {
+            const errorText = await response.text();
+            document.getElementById('upload-response').innerText = `Error: ${errorText}`;
+        }
+    } catch (err) {
+        document.getElementById('upload-response').innerText = 'Error uploading file.';
+        console.error(err);
+    }
+}
 

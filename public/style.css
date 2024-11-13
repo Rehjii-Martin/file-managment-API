@@ -1,60 +1,32 @@
-/* General Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-/* Body Styling */
+/* General Styles */
 body {
     font-family: 'Arial', sans-serif;
-    background: linear-gradient(135deg, #f4f4f9, #cde7f5);
+    margin: 0;
+    padding: 0;
+    background: #f4f4f9;
     color: #333;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
 }
 
-/* Header Styling */
-header {
-    background: linear-gradient(135deg, #4a90e2, #357abd);
-    color: #fff;
-    text-align: center;
-    padding: 40px 20px;
-    border-radius: 0 0 20px 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-header h1 {
-    font-size: 2.5rem;
-    font-weight: bold;
-}
-
-header p {
-    font-size: 1.2rem;
-    font-weight: 300;
-    margin-top: 10px;
-}
-
-/* Main Content */
-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+.container {
+    max-width: 800px;
+    margin: 0 auto;
     padding: 20px;
 }
 
-/* Card Styling */
+header, footer {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+h1 {
+    color: #4A90E2;
+}
+
 .card {
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    padding: 30px;
-    max-width: 400px;
-    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
     margin-bottom: 20px;
 }
 
@@ -64,29 +36,27 @@ main {
     padding: 10px 20px;
     font-size: 16px;
     border: none;
-    border-radius: 8px;
+    border-radius: 4px;
     cursor: pointer;
-    transition: transform 0.2s ease, background 0.3s ease;
+    transition: background 0.3s ease;
 }
 
 .button.primary {
-    background: #4a90e2;
+    background: #4A90E2;
     color: #fff;
 }
 
 .button.primary:hover {
-    background: #357abd;
-    transform: translateY(-2px);
+    background: #357ABD;
 }
 
 .button.danger {
-    background: #e94e77;
+    background: #E94E77;
     color: #fff;
 }
 
 .button.danger:hover {
-    background: #d43765;
-    transform: translateY(-2px);
+    background: #D43765;
 }
 
 /* Inputs */
@@ -95,27 +65,62 @@ main {
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #ccc;
-    border-radius: 8px;
+    border-radius: 4px;
 }
 
-/* Response Styling */
+input[type="file"] {
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+
+/* Responses and Preformatted Text */
 .response {
-    margin-top: 10px;
-    padding: 10px;
-    border-radius: 8px;
     background: #f8f8f8;
-    border: 1px solid #ddd;
-    color: #333;
-}
-
-/* Footer Styling */
-footer {
-    text-align: center;
     padding: 10px;
-    background: #4a90e2;
-    color: #fff;
-    font-size: 0.9rem;
-    border-radius: 20px 20px 0 0;
-    margin-top: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 10px;
+    white-space: pre-wrap;
 }
 
+/* Collapsible Sections */
+details summary {
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+details {
+    margin-bottom: 20px;
+}
+
+details[open] summary {
+    color: #4A90E2;
+}
+
+/* Hidden state */
+.hidden {
+    opacity: 0;
+    max-height: 0;
+    transition: opacity 0.5s ease, max-height 0.5s ease;
+    overflow: hidden;
+}
+
+/* Visible state */
+.visible {
+    opacity: 1;
+    max-height: 500px; /* Large enough to fit the list */
+}
+
+#list-response {
+    background: #e8f4fc; /* Light blue background */
+    border: 1px solid #4a90e2; /* Matching border */
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 10px;
+}

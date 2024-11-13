@@ -65,6 +65,43 @@ function authenticateToken(req, res, next) {
     });
 }
 
+// Implement File Upload Feature
+const multer = require('multer');
+
+// Configure multer to upload files to the Database directory
+const upload = multer({
+    dest: path.join(__dirname, 'Database'), // Temporary location
+    limits: { fileSize: 50 * 1024 * 1024 }, // Limit files to 50MB
+});
+
+// File upload endpoint
+app.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
+    const file = req.file;
+
+    if (!file) {
+        return res.status(400).send('No file uploaded.');
+    }
+
+    const { originalname, size } = file;
+    const newFilePath = path.join(__dirname, 'Database', originalname);
+
+    try {
+        // Rename the file to its original name
+        fs.renameSync(file.path, newFilePath);
+
+        // Store metadata in the database
+        await pool.query(
+            'INSERT INTO files (name, path, size, upload_date) VALUES ($1, $2, $3, NOW())',
+            [originalname, newFilePath, size]
+        );
+
+        res.send('File uploaded successfully.');
+    } catch (err) {
+        console.error('Error uploading file:', err.message);
+        res.status(500).send('Failed to upload file.');
+    }
+});
+
 // Routes
 
 // Login Endpoint

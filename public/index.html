@@ -1,85 +1,94 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>File Management System</title>
+    <script defer src="/app.js"></script>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>File Management System</title>
-  <script defer src="/app.js"></script>
-  <link rel="stylesheet" href="/styles.css" />
-</head>
+  <body>
+    <header>
+      <h1>File Management System</h1>
+      <p>Efficiently manage your files with ease</p>
+    </header>
 
-<body>
-  <header>
-    <h1>File Management System</h1>
-    <p>Efficiently manage your files with ease</p>
-  </header>
-
-  <main>
-    <!-- Login Section -->
-    <section id="login-section" class="card">
-      <h2>Login</h2>
-      <form id="login-form">
-        <label for="username">Username:</label>
-        <input type="text" id="username" class="input" required />
-        <br />
-        <label for="password">Password:</label>
-        <input type="password" id="password" class="input" required />
-        <br />
-        <button type="submit" class="button primary">Login</button>
-      </form>
-      <p id="login-response" class="response"></p>
-    </section>
-
-    <!-- Main App Section -->
-    <section id="app-section" class="card" style="display: none">
-      <h2>File Operations</h2>
-      <div class="button-group">
-        <button onclick="listFiles()" class="button">Retrieve List</button>
-        <button onclick="logout()" class="button danger">Logout</button>
-      </div>
-      <pre id="list-response" class="response hidden"></pre>
-
-      <!-- Add File Section -->
-      <details>
-        <summary>Add File</summary>
-        <form id="add-file-form" onsubmit="addFile(event)">
-          <label for="add-name">File Name:</label>
-          <input type="text" id="add-name" class="input" required />
-          <label for="add-size">File Size (bytes):</label>
-          <input type="number" id="add-size" class="input" required />
-          <button type="submit" class="button primary">Add File</button>
+    <main>
+      <!-- Login Section -->
+      <section id="login-section" class="card">
+        <h2>Login</h2>
+        <form id="login-form">
+          <label for="username">Username:</label>
+          <input type="text" id="username" class="input" required />
+          <br />
+          <label for="password">Password:</label>
+          <input type="password" id="password" class="input" required />
+          <br />
+          <button type="submit" class="button primary">Login</button>
         </form>
-        <p id="add-response" class="response"></p>
-      </details>
+        <p id="login-response" class="response"></p>
+      </section>
 
-      <!-- Download File Section -->
-      <details>
-        <summary>Download File</summary>
-        <form id="download-file-form" onsubmit="downloadFile(event)">
-          <label for="download-name">File Name:</label>
-          <input type="text" id="download-name" class="input" required />
-          <button type="submit" class="button primary">Download</button>
-        </form>
-        <p id="download-response" class="response"></p>
-      </details>
+      <!-- Main App Section -->
+      <section id="app-section" class="card" style="display: none">
+        <h2>File Operations</h2>
+        <div class="button-group">
+          <button onclick="listFiles()" class="button">Retrieve List</button>
+          <button onclick="logout()" class="button danger">Logout</button>
+        </div>
+        <pre id="list-response" class="response hidden"></pre>
 
-      <!-- Delete File Section -->
-      <details>
-        <summary>Delete File</summary>
-        <form id="delete-file-form" onsubmit="deleteFile(event)">
-          <label for="delete-name">File Name:</label>
-          <input type="text" id="delete-name" class="input" required />
-          <button type="submit" class="button danger">Delete</button>
-        </form>
-        <p id="delete-response" class="response"></p>
-      </details>
-    </section>
-  </main>
+        <!-- Add File Section -->
+        <details>
+          <summary>Add File</summary>
+          <form id="add-file-form" onsubmit="addFile(event)">
+            <label for="add-name">File Name:</label>
+            <input type="text" id="add-name" class="input" required />
+            <label for="add-size">File Size (bytes):</label>
+            <input type="number" id="add-size" class="input" required />
+            <button type="submit" class="button primary">Add File</button>
+          </form>
+          <p id="add-response" class="response"></p>
+        </details>
 
-  <footer>
-    <p>© 2024 File Management System - All Rights Reserved</p>
-  </footer>
-</body>
+        <!-- Download File Section -->
+        <details>
+          <summary>Download File</summary>
+          <form id="download-file-form" onsubmit="downloadFile(event)">
+            <label for="download-name">File Name:</label>
+            <input type="text" id="download-name" class="input" required />
+            <button type="submit" class="button primary">Download</button>
+          </form>
+          <p id="download-response" class="response"></p>
+        </details>
 
+        <!-- Delete File Section -->
+        <details>
+          <summary>Delete File</summary>
+          <form id="delete-file-form" onsubmit="deleteFile(event)">
+            <label for="delete-name">File Name:</label>
+            <input type="text" id="delete-name" class="input" required />
+            <button type="submit" class="button danger">Delete</button>
+          </form>
+          <p id="delete-response" class="response"></p>
+        </details>
+
+        <!-- Upload File Section -->
+        <details>
+          <summary>Upload File</summary>
+          <form id="upload-file-form" onsubmit="uploadFile(event)">
+            <label for="file-upload">Choose a file:</label>
+            <input type="file" id="file-upload" required />
+            <button type="submit" class="button primary">Upload</button>
+          </form>
+          <p id="upload-response" class="response"></p>
+        </details>
+      </section>
+    </main>
+
+    <footer>
+      <p>© 2024 File Management System - All Rights Reserved</p>
+    </footer>
+  </body>
 </html>
