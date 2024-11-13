@@ -114,7 +114,7 @@ Delete a file and its associated metadata.
 
 To temporarily expose your API for remote access:
 
-1. Install ngrok by following the instructions here.
+1. Install ngrok.
 
 2. Start your server locally:
 
