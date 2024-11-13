@@ -10,6 +10,7 @@ This is a simple File Management System that allows users to manage file metadat
 - Add metadata for files.
 - Download files stored in the local **Database** directory.
 - Delete files and their associated metadata.
+- Expose the API for remote access using **ngrok** (optional).
 
 ## Project Setup
 
