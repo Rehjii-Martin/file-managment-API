@@ -31,6 +31,16 @@ if (!fs.existsSync(databaseDirectory)) {
     console.log(`Created directory: ${databaseDirectory}`);
 }
 
+// Report result of query
+pool.query('SELECT * FROM files', (err, result) => {
+    if (err) {
+        console.error('Database query failed:', err.message);
+    } else {
+        console.log('Database query result:', result.rows);
+    }
+});
+
+
 // Ensure the "files" table exists
 pool.query(`
     CREATE TABLE IF NOT EXISTS files (
@@ -74,7 +84,27 @@ const upload = multer({
     limits: { fileSize: 50 * 1024 * 1024 }, // Limit files to 50MB
 });
 
-// File upload endpoint
+// Required Modules
+const crypto = require('crypto');
+
+// Encryption Configuration
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-32-byte-secret-key'; // Replace with a 32-byte key
+const IV_LENGTH = 16; // AES block size
+
+// Function to Encrypt File
+function encryptFile(filePath, encryptedPath) {
+    const iv = crypto.randomBytes(IV_LENGTH); // Generate a random IV
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+
+    const input = fs.createReadStream(filePath);
+    const output = fs.createWriteStream(encryptedPath);
+
+    input.pipe(cipher).pipe(output); // Encrypt file content
+
+    return iv.toString('hex'); // Return the IV as a hex string
+}
+
+// File Upload Endpoint with Encryption
 app.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
     const file = req.file;
 
@@ -83,19 +113,22 @@ app.post('/upload', authenticateToken, upload.single('file'), async (req, res) =
     }
 
     const { originalname, size } = file;
-    const newFilePath = path.join(__dirname, 'Database', originalname);
+    const encryptedFilePath = path.join(__dirname, 'Database', `${originalname}.enc`);
 
     try {
-        // Rename the file to its original name
-        fs.renameSync(file.path, newFilePath);
+        // Encrypt the file and save the IV
+        const iv = encryptFile(file.path, encryptedFilePath);
 
-        // Store metadata in the database
+        // Remove the original file after encryption
+        fs.unlinkSync(file.path);
+
+        // Store metadata in the database, including the encrypted path and IV
         await pool.query(
-            'INSERT INTO files (name, path, size, upload_date) VALUES ($1, $2, $3, NOW())',
-            [originalname, newFilePath, size]
+            'INSERT INTO files (name, path, size, upload_date, iv) VALUES ($1, $2, $3, NOW(), $4)',
+            [originalname, encryptedFilePath, size, iv]
         );
 
-        res.send('File uploaded successfully.');
+        res.send('File uploaded and encrypted successfully.');
     } catch (err) {
         console.error('Error uploading file:', err.message);
         res.status(500).send('Failed to upload file.');
@@ -169,16 +202,64 @@ app.post('/add-file', authenticateToken, async (req, res) => {
     }
 });
 
-// Download File
-app.get('/download/:name', authenticateToken, (req, res) => {
-    const filePath = path.join(databaseDirectory, req.params.name);
-    res.download(filePath, (err) => {
-        if (err) {
-            console.error('Error downloading file:', err.message);
-            res.status(500).send('Failed to download file.');
-        }
+// Decrypt File Function
+function decryptFile(encryptedPath, iv) {
+    const decipher = crypto.createDecipheriv(
+        'aes-256-cbc',
+        Buffer.from(process.env.ENCRYPTION_KEY), // Replace with your 32-byte key stored in an environment variable
+        Buffer.from(iv, 'hex') // Convert IV from hex string to a buffer
+    );
+
+    const decryptedPath = encryptedPath.replace('.enc', ''); // Original file name (removes .enc extension)
+    const input = fs.createReadStream(encryptedPath); // Read encrypted file
+    const output = fs.createWriteStream(decryptedPath); // Create writable stream for decrypted file
+
+    // Pipe the input stream through the decipher and into the output stream
+    input.pipe(decipher).pipe(output);
+
+    return new Promise((resolve, reject) => {
+        output.on('finish', () => resolve(decryptedPath)); // Resolve the promise when decryption is complete
+        output.on('error', (err) => reject(err)); // Reject the promise if an error occurs
     });
+}
+
+// File Download Endpoint
+app.get('/download/:name', async (req, res) => {
+    const fileName = req.params.name;
+
+    try {
+        // Query the database for file metadata
+        const result = await pool.query(
+            'SELECT path, iv FROM files WHERE name = $1',
+            [fileName]
+        );
+
+        // Check if the file exists in the database
+        if (result.rowCount === 0) {
+            return res.status(404).send('File not found.');
+        }
+
+        const { path: encryptedPath, iv } = result.rows[0];
+
+        // Decrypt the file
+        const decryptedPath = await decryptFile(encryptedPath, iv);
+
+        // Send the decrypted file to the client
+        res.download(decryptedPath, fileName, (err) => {
+            if (err) {
+                console.error('Error sending file:', err.message);
+                return res.status(500).send('Failed to send file.');
+            }
+
+            // Clean up the decrypted file after sending it
+            fs.unlinkSync(decryptedPath);
+        });
+    } catch (err) {
+        console.error('Error during file download:', err.message);
+        res.status(500).send('Failed to download file.');
+    }
 });
+
 
 // Delete File
 app.delete('/delete/:name', authenticateToken, async (req, res) => {
