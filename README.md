@@ -22,7 +22,7 @@ This is a simple File Management System that allows users to securely manage fil
 
 ```
 
-git clone https://github.com/your-username/file-management-api.git
+git clone https://github.com/Rehjii-Martin/file-management-api.git
 cd file-management-api
 ```
 
