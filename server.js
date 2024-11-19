@@ -10,7 +10,7 @@ const app = express();
 const PORT = 3000;
 
 // Secret key for JWT
-const JWT_SECRET = 'your_jwt_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET; 
 
 // Middleware
 app.use(express.json()); // Parse JSON body
@@ -58,18 +58,24 @@ pool.query(`
 
 
 // Middleware to authenticate JWT
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
+
 function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).send('Access token required.');
+    const token = req.cookies.token;
+
+    if (!token) {
+        return res.sendStatus(401); // Unauthorized
+    }
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.status(403).send('Invalid token.');
+        if (err) {
+            return res.sendStatus(403); // Forbidden
+        }
         req.user = user;
         next();
     });
 }
-
 // Implement File Upload Feature
 const multer = require('multer');
 const crypto = require('crypto');
@@ -84,21 +90,35 @@ if (!ENCRYPTION_KEY || Buffer.from(ENCRYPTION_KEY, 'hex').length !== 32) {
     throw new Error('Encryption key must be 32 bytes long.');
 }
 
-const IV_LENGTH = 16; // AES block size
-
-// Function to Encrypt File
+// Function to Encrypt Files
 function encryptFile(filePath, encryptedPath) {
-    const iv = crypto.randomBytes(IV_LENGTH); // Generate a random IV
-    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
-
-    const input = fs.createReadStream(filePath);
-    const output = fs.createWriteStream(encryptedPath);
-
-    input.pipe(cipher).pipe(output); // Encrypt file content
-
     return new Promise((resolve, reject) => {
-        output.on('finish', () => resolve(iv.toString('hex'))); // Return the IV as a hex string
-        output.on('error', (err) => reject(err));
+        try {
+            const iv = crypto.randomBytes(16); // Generate a random 16-byte IV
+            const cipher = crypto.createCipheriv(
+                'aes-256-cbc',
+                Buffer.from(ENCRYPTION_KEY, 'hex'),
+                iv
+            );
+
+            const input = fs.createReadStream(filePath);
+            const output = fs.createWriteStream(encryptedPath);
+
+            input.pipe(cipher).pipe(output);
+
+            output.on('finish', () => {
+                console.log(`Encryption completed for file: ${filePath}`);
+                resolve(iv.toString('hex')); // Return the IV as a hex string
+            });
+
+            output.on('error', (err) => {
+                console.error('Error during encryption:', err.message);
+                reject(err);
+            });
+        } catch (err) {
+            console.error('Unexpected error during encryption:', err.message);
+            reject(err);
+        }
     });
 } 
 
@@ -112,84 +132,58 @@ app.post('/upload', authenticateToken, upload.single('file'), async (req, res) =
 
     const { originalname, path: tempPath, size } = file;
 
-    // Generate a random IV for encryption
-    const iv = crypto.randomBytes(16); // 16 bytes for AES-256-CBC
-
-    // Define encrypted file path
-    const encryptedPath = path.join(__dirname, 'Database', `${originalname}.enc`);
 
     try {
+        // Define encrypted file path
+        const encryptedPath = path.join(__dirname, 'Database', `${originalname}.enc`);
+    
         // Encrypt the file
-        const cipher = crypto.createCipheriv(
-            'aes-256-cbc',
-            Buffer.from(ENCRYPTION_KEY, 'hex'),
-            iv
+        const iv = await encryptFile(tempPath, encryptedPath);
+    
+        // Store file metadata in the database
+        await pool.query(
+            'INSERT INTO files (name, path, size, iv, upload_date) VALUES ($1, $2, $3, $4, NOW())',
+            [originalname, encryptedPath, size, iv]
         );
 
-        const input = fs.createReadStream(tempPath); // Temporary file from multer
-        const output = fs.createWriteStream(encryptedPath);
+        // Delete temporary file after encryption
+        fs.unlinkSync(tempPath);
+        console.log('Temporary file deleted:', tempPath);
 
-        // Pipe input to cipher and save encrypted output
-        input.pipe(cipher).pipe(output);
-
-        output.on('finish', async () => {
-            console.log('File encrypted and saved as:', encryptedPath);
-
-            // Store file metadata in the database
-            await pool.query(
-                'INSERT INTO files (name, path, size, iv, upload_date) VALUES ($1, $2, $3, $4, NOW())',
-                [originalname, encryptedPath, size, iv.toString('hex')]
-            );
-
-            // Delete temporary file after encryption
-            fs.unlinkSync(tempPath);
-
-            res.send('File uploaded and encrypted successfully.');
-        });
-
-        output.on('error', (err) => {
-            console.error('Error during encryption:', err.message);
-            res.status(500).send('Failed to encrypt file.');
-        });
+        res.send('File uploaded and encrypted successfully.');
     } catch (err) {
-        console.error('Error encrypting file:', err.message);
+        console.error('Error during file upload:', err.message);
         res.status(500).send('Failed to upload file.');
     }
+
 });
 
 // Routes
 
 // Login Endpoint
-app.post('/login', (req, res) => {
-    console.log('Login attempt:', req.body);
-
+app.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
-    // Mock user credentials for login (replace this with a user table in a real app)
-    const mockUser = {
-        username: 'admin',
-        password: bcrypt.hashSync('password', 10), // Hash "password"
-    };
+    if (username === 'admin' && password === 'password') {
+        const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1h' });
 
+        // Debugging log
+        console.log('Generated token:', token);
 
-    if (!username || !password) {
-        console.log('Missing username or password');
-        return res.status(400).send('Username and password required.');
+        // Set the token as a secure HTTP-only cookie
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 3600000,
+        });
+
+        // Send the token as JSON
+        res.status(200).json({ message: 'Login successful', token });
+    } else {
+        // Debugging log for invalid credentials
+        console.log('Invalid login attempt:', username, password);
+        res.status(401).send('Invalid credentials');
     }
-
-    if (username !== mockUser.username || !bcrypt.compareSync(password, mockUser.password)) {
-        console.log('Invalid credentials');
-        return res.status(401).send('Invalid credentials.');
-    }
-
-    console.log('Credentials valid');
-    const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1h' });
-
-    // Log token for debug
-    console.log('Generated token:', token)
-
-    // Send token back
-    res.json({ token });
 });
 
 // List Files Endpoint
@@ -285,35 +279,18 @@ app.get('/download/:name', async (req, res) => {
             return res.status(404).send('File not found on disk.');
         }
 
-        // Decrypt file
-        const decipher = crypto.createDecipheriv(
-            'aes-256-cbc',
-            Buffer.from(ENCRYPTION_KEY, 'hex'),
-            Buffer.from(iv, 'hex')
-        );
+       // Decrypt file
+        const decryptedPath = await decryptFile(encryptedPath, iv);
+        res.download(decryptedPath, fileName, (err) => {
+            if (err) {
+                console.error('Error sending file:', err.message);
+                return res.status(500).send('Failed to send file.');
+            }
 
-        const decryptedPath = encryptedPath.replace('.enc', ''); // Adjust if necessary
-        const input = fs.createReadStream(encryptedPath);
-        const output = fs.createWriteStream(decryptedPath);
-
-        input.pipe(decipher).pipe(output);
-
-        output.on('finish', () => {
-            console.log('Decryption successful, sending file:', decryptedPath);
-
-            res.download(decryptedPath, fileName, (err) => {
-                if (err) {
-                    console.error('Error sending file:', err.message);
-                    return res.status(500).send('Failed to send file.');
-                }
-
-                fs.unlinkSync(decryptedPath); // Clean up decrypted file
+            // Clean up decrypted file
+            fs.unlink(decryptedPath, (unlinkErr) => {
+                if (unlinkErr) console.error('Error cleaning up decrypted file:', unlinkErr.message);
             });
-        });
-
-        output.on('error', (err) => {
-            console.error('Error during decryption:', err.message);
-            res.status(500).send('Failed to decrypt file.');
         });
     } catch (err) {
         console.error('Unhandled error during file download:', err.message);
@@ -321,6 +298,25 @@ app.get('/download/:name', async (req, res) => {
     }
 });
 
+async function decryptFile(encryptedPath, iv) {
+    const decipher = crypto.createDecipheriv(
+        'aes-256-cbc',
+        Buffer.from(process.env.ENCRYPTION_KEY, 'hex'),
+        Buffer.from(iv, 'hex')
+    );
+
+    const decryptedPath = encryptedPath.replace('.enc', '');
+
+    return new Promise((resolve, reject) => {
+        const input = fs.createReadStream(encryptedPath);
+        const output = fs.createWriteStream(decryptedPath);
+
+        input.pipe(decipher).pipe(output);
+
+        output.on('finish', () => resolve(decryptedPath));
+        output.on('error', (err) => reject(err));
+    });
+} 
 
 // Delete File
 app.delete('/delete/:name', authenticateToken, async (req, res) => {

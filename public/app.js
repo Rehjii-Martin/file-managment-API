@@ -104,6 +104,7 @@ function logout() {
 }
 
 // Token handling during login
+
 async function login(event) {
     event.preventDefault();
 
@@ -117,15 +118,26 @@ async function login(event) {
             body: JSON.stringify({ username, password }),
         });
 
-        const data = await response.json();
-        console.log('Login response:', data); // Log the server response
+        console.log('Raw response:', response); // Debugging log
 
-        if (data.token) {
-            localStorage.setItem('token', data.token);
-            console.log('Token stored in localStorage:', localStorage.getItem('token')); // Confirm storage
-            alert('Login successful!');
+        // Check content type of the response
+        const contentType = response.headers.get('content-type');
+        console.log('Response content type:', contentType); // Debugging log
+
+        // Parse the response based on content type
+        if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            console.log('Parsed response data:', data);
+
+            if (data.token) {
+                localStorage.setItem('token', data.token);
+                alert(data.message);
+            } else {
+                alert('Login failed. No token received.');
+            }
         } else {
-            alert('Login failed. No token received.');
+            console.error('Unexpected response format:', await response.text());
+            alert('Unexpected response format. Please contact support.');
         }
     } catch (error) {
         console.error('Error during login:', error);
@@ -133,24 +145,21 @@ async function login(event) {
     }
 }
 
+
 // Retrieve File List
 async function retrieveList() {
-    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiaWF0IjoxNzMxOTg5MTkwLCJleHAiOjE3MzE5OTI3OTB9.eBlyjJY0BL9sxOPhBITo-f0yfa4yDUj5XfDsSNFyeko' // Replace with a valid token
-    console.log('Using hardcoded token:', token);
-
     try {
         const response = await fetch('/files', {
             method: 'GET',
-            headers: { 'Authorization': `Bearer ${token}` },
         });
 
         if (response.ok) {
             const files = await response.json();
-            console.log('Files retrieved:', files);
             displayList(files);
         } else {
-            console.error('Failed to retrieve files:', await response.text());
-            alert('Failed to retrieve files. Please try logging in again.');
+            const errorMessage = await response.text();
+            console.error('Failed to retrieve files:', errorMessage);
+            alert('Failed to retrieve files. Please log in again.');
         }
     } catch (error) {
         console.error('Error retrieving file list:', error);
