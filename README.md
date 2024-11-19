@@ -1,8 +1,16 @@
-File Management API
-
 # File Management API
 
 This is a secure and user-friendly file management system that allows users to upload, encrypt, download, and delete files while maintaining metadata in a PostgreSQL database. All files are encrypted using AES-256-CBC encryption before storage, ensuring confidentiality and security.
+
+---
+
+## Frontend UI
+
+Below is an example of the frontend interface for this application:
+
+![Frontend UI](./FileManSys.png)
+
+---
 
 ## Features
 
