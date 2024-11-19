@@ -1,5 +1,3 @@
-let token = null;
-
 // Login Functionality
 document.getElementById('login-form').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -32,6 +30,65 @@ document.getElementById('login-form').addEventListener('submit', async (event) =
     }
 });
 
+// displayList
+function displayList(files) {
+    const listContainer = document.getElementById('list-response');
+    listContainer.innerHTML = ''; // Clear existing content
+
+    // Add each file to the list container
+    files.forEach(file => {
+        const listItem = document.createElement('div');
+        listItem.textContent = `${file.name} (${file.size} bytes)`;
+        listItem.style.padding = '5px'; // Optional: Add styling
+        listItem.style.borderBottom = '1px solid #ccc'; // Optional: Add styling
+        listContainer.appendChild(listItem);
+    });
+
+    listContainer.style.display = 'block'; // Show the list
+}
+
+// Token Getter
+function getToken() {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.error('No token found in localStorage.');
+            alert('You must log in to perform this action.');
+        } else {
+            console.log('Token successfully fetched:', token);
+        }
+        return token;
+    } catch (error) {
+        console.error('Error accessing localStorage:', error);
+        alert('An error occurred while accessing the token. Please try again.');
+        return null;
+    }
+}
+
+// Format the metadata //
+function populateList(responseData) {
+    const listContainer = document.getElementById('list-response');
+    listContainer.innerHTML = ''; // Clear existing content
+
+    const ul = document.createElement('ul');
+
+    responseData.forEach(file => {
+        const li = document.createElement('li');
+
+        // Add styled metadata
+        li.innerHTML = `
+            <span class="label">File Name:</span> <span>${file.name}</span>
+            <span class="label">Size:</span> <span>${file.size} bytes</span>
+            <span class="label">Upload Date:</span> <span>${new Date(file.upload_date).toLocaleString()}</span>
+        `;
+
+        ul.appendChild(li);
+    });
+
+    listContainer.appendChild(ul);
+}
+
+
 function showAppSection() {
     document.getElementById('login-section').style.display = 'none';
     document.getElementById('app-section').style.display = 'block';
@@ -46,39 +103,60 @@ function logout() {
     document.getElementById('login-response').innerText = 'Logged out successfully.';
 }
 
+// Token handling during login
+async function login(event) {
+    event.preventDefault();
+
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    try {
+        const response = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+        });
+
+        const data = await response.json();
+        console.log('Login response:', data); // Log the server response
+
+        if (data.token) {
+            localStorage.setItem('token', data.token);
+            console.log('Token stored in localStorage:', localStorage.getItem('token')); // Confirm storage
+            alert('Login successful!');
+        } else {
+            alert('Login failed. No token received.');
+        }
+    } catch (error) {
+        console.error('Error during login:', error);
+        alert('Login failed. Please try again.');
+    }
+}
+
 // Retrieve File List
-async function listFiles() {
-    const responseElement = document.getElementById('list-response');
-    responseElement.classList.add('hidden'); // Hide the response initially
+async function retrieveList() {
+    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiaWF0IjoxNzMxOTg5MTkwLCJleHAiOjE3MzE5OTI3OTB9.eBlyjJY0BL9sxOPhBITo-f0yfa4yDUj5XfDsSNFyeko' // Replace with a valid token
+    console.log('Using hardcoded token:', token);
 
     try {
         const response = await fetch('/files', {
             method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('jwt')}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` },
         });
 
-        const files = await response.json();
-        responseElement.textContent = JSON.stringify(files, null, 2); // Pretty JSON formatting
-
-        // Trigger the fade-in effect
-        setTimeout(() => {
-            responseElement.classList.remove('hidden');
-            responseElement.classList.add('visible');
-        }, 100); // Small delay for smooth animation
-    } catch (err) {
-        responseElement.textContent = 'Error fetching files.';
-        console.error(err);
-
-        // Trigger the fade-in effect for error message
-        setTimeout(() => {
-            responseElement.classList.remove('hidden');
-            responseElement.classList.add('visible');
-        }, 100);
+        if (response.ok) {
+            const files = await response.json();
+            console.log('Files retrieved:', files);
+            displayList(files);
+        } else {
+            console.error('Failed to retrieve files:', await response.text());
+            alert('Failed to retrieve files. Please try logging in again.');
+        }
+    } catch (error) {
+        console.error('Error retrieving file list:', error);
+        alert('An error occurred while retrieving the file list. Please try again.');
     }
 }
-
 
 // Add File Metadata
 async function addFile(event) {
@@ -110,35 +188,36 @@ async function addFile(event) {
 
 // Download File
 async function downloadFile(event) {
-    event.preventDefault();
+    event.preventDefault(); // Prevent the form's default behavior
 
-    const name = document.getElementById('download-name').value;
+    const fileName = document.getElementById('file-name').value.trim(); // Ensure you're using the correct input ID
+
+    if (!fileName) {
+        alert('Please enter a valid file name.');
+        return;
+    }
 
     try {
-        const response = await fetch(`/download/${name}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('jwt')}`
-            }
-        });
+        const response = await fetch(`/download/${encodeURIComponent(fileName)}`);
 
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = name;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.getElementById('download-response').innerText = 'File downloaded successfully!';
-        } else {
-            document.getElementById('download-response').innerText = 'Failed to download file.';
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        const blob = await response.blob();
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = fileName;
+        link.style.display = 'none';
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        console.log('File downloaded successfully.');
     } catch (err) {
-        document.getElementById('download-response').innerText = 'Error downloading file.';
-        console.error(err);
+        console.error('Error downloading file:', err.message);
+        alert('Failed to download file. Please try again.');
     }
 }
 

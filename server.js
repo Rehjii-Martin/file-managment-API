@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const fs = require('fs');
@@ -17,11 +18,11 @@ app.use(express.static('public')); // Serve static files from "public"
 
 // PostgreSQL Database Setup
 const pool = new Pool({
-    user: 'youruser',
-    host: 'localhost',
-    database: 'yourdatabase',
-    password: 'yourpassword',
-    port: 5432,
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT,
 });
 
 // Ensure the "Database" directory exists
@@ -40,7 +41,6 @@ pool.query('SELECT * FROM files', (err, result) => {
     }
 });
 
-
 // Ensure the "files" table exists
 pool.query(`
     CREATE TABLE IF NOT EXISTS files (
@@ -56,11 +56,6 @@ pool.query(`
     console.error('Error creating PostgreSQL table:', err.message);
 });
 
-// Mock user credentials for login (replace this with a user table in a real app)
-const mockUser = {
-    username: 'admin',
-    password: bcrypt.hashSync('password', 10), // Hash "password"
-};
 
 // Middleware to authenticate JWT
 function authenticateToken(req, res, next) {
@@ -77,34 +72,37 @@ function authenticateToken(req, res, next) {
 
 // Implement File Upload Feature
 const multer = require('multer');
-
-// Configure multer to upload files to the Database directory
-const upload = multer({
-    dest: path.join(__dirname, 'Database'), // Temporary location
-    limits: { fileSize: 50 * 1024 * 1024 }, // Limit files to 50MB
-});
-
-// Required Modules
 const crypto = require('crypto');
 
+// Configure multer to upload files to the Database directory
+const upload = multer({ dest: 'uploads/' }); // Temporary storage for uploaded
+
 // Encryption Configuration
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-32-byte-secret-key'; // Replace with a 32-byte key
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; // Replace with a 32-byte key
+
+if (!ENCRYPTION_KEY || Buffer.from(ENCRYPTION_KEY, 'hex').length !== 32) {
+    throw new Error('Encryption key must be 32 bytes long.');
+}
+
 const IV_LENGTH = 16; // AES block size
 
 // Function to Encrypt File
 function encryptFile(filePath, encryptedPath) {
     const iv = crypto.randomBytes(IV_LENGTH); // Generate a random IV
-    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
 
     const input = fs.createReadStream(filePath);
     const output = fs.createWriteStream(encryptedPath);
 
     input.pipe(cipher).pipe(output); // Encrypt file content
 
-    return iv.toString('hex'); // Return the IV as a hex string
-}
+    return new Promise((resolve, reject) => {
+        output.on('finish', () => resolve(iv.toString('hex'))); // Return the IV as a hex string
+        output.on('error', (err) => reject(err));
+    });
+} 
 
-// File Upload Endpoint with Encryption
+// File upload endpoint
 app.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
     const file = req.file;
 
@@ -112,25 +110,49 @@ app.post('/upload', authenticateToken, upload.single('file'), async (req, res) =
         return res.status(400).send('No file uploaded.');
     }
 
-    const { originalname, size } = file;
-    const encryptedFilePath = path.join(__dirname, 'Database', `${originalname}.enc`);
+    const { originalname, path: tempPath, size } = file;
+
+    // Generate a random IV for encryption
+    const iv = crypto.randomBytes(16); // 16 bytes for AES-256-CBC
+
+    // Define encrypted file path
+    const encryptedPath = path.join(__dirname, 'Database', `${originalname}.enc`);
 
     try {
-        // Encrypt the file and save the IV
-        const iv = encryptFile(file.path, encryptedFilePath);
-
-        // Remove the original file after encryption
-        fs.unlinkSync(file.path);
-
-        // Store metadata in the database, including the encrypted path and IV
-        await pool.query(
-            'INSERT INTO files (name, path, size, upload_date, iv) VALUES ($1, $2, $3, NOW(), $4)',
-            [originalname, encryptedFilePath, size, iv]
+        // Encrypt the file
+        const cipher = crypto.createCipheriv(
+            'aes-256-cbc',
+            Buffer.from(ENCRYPTION_KEY, 'hex'),
+            iv
         );
 
-        res.send('File uploaded and encrypted successfully.');
+        const input = fs.createReadStream(tempPath); // Temporary file from multer
+        const output = fs.createWriteStream(encryptedPath);
+
+        // Pipe input to cipher and save encrypted output
+        input.pipe(cipher).pipe(output);
+
+        output.on('finish', async () => {
+            console.log('File encrypted and saved as:', encryptedPath);
+
+            // Store file metadata in the database
+            await pool.query(
+                'INSERT INTO files (name, path, size, iv, upload_date) VALUES ($1, $2, $3, $4, NOW())',
+                [originalname, encryptedPath, size, iv.toString('hex')]
+            );
+
+            // Delete temporary file after encryption
+            fs.unlinkSync(tempPath);
+
+            res.send('File uploaded and encrypted successfully.');
+        });
+
+        output.on('error', (err) => {
+            console.error('Error during encryption:', err.message);
+            res.status(500).send('Failed to encrypt file.');
+        });
     } catch (err) {
-        console.error('Error uploading file:', err.message);
+        console.error('Error encrypting file:', err.message);
         res.status(500).send('Failed to upload file.');
     }
 });
@@ -142,6 +164,13 @@ app.post('/login', (req, res) => {
     console.log('Login attempt:', req.body);
 
     const { username, password } = req.body;
+
+    // Mock user credentials for login (replace this with a user table in a real app)
+    const mockUser = {
+        username: 'admin',
+        password: bcrypt.hashSync('password', 10), // Hash "password"
+    };
+
 
     if (!username || !password) {
         console.log('Missing username or password');
@@ -155,6 +184,11 @@ app.post('/login', (req, res) => {
 
     console.log('Credentials valid');
     const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1h' });
+
+    // Log token for debug
+    console.log('Generated token:', token)
+
+    // Send token back
     res.json({ token });
 });
 
@@ -202,60 +236,87 @@ app.post('/add-file', authenticateToken, async (req, res) => {
     }
 });
 
-// Decrypt File Function
+// Decrypt file function
 function decryptFile(encryptedPath, iv) {
     const decipher = crypto.createDecipheriv(
         'aes-256-cbc',
-        Buffer.from(process.env.ENCRYPTION_KEY), // Replace with your 32-byte key stored in an environment variable
-        Buffer.from(iv, 'hex') // Convert IV from hex string to a buffer
+        Buffer.from(ENCRYPTION_KEY, 'hex'),
+        Buffer.from(iv, 'hex')
     );
 
-    const decryptedPath = encryptedPath.replace('.enc', ''); // Original file name (removes .enc extension)
+    const decryptedPath = encryptedPath.replace('.enc', ''); // Optional: Change path if needed
     const input = fs.createReadStream(encryptedPath); // Read encrypted file
-    const output = fs.createWriteStream(decryptedPath); // Create writable stream for decrypted file
+    const output = fs.createWriteStream(decryptedPath); // Write decrypted file
 
-    // Pipe the input stream through the decipher and into the output stream
     input.pipe(decipher).pipe(output);
 
     return new Promise((resolve, reject) => {
-        output.on('finish', () => resolve(decryptedPath)); // Resolve the promise when decryption is complete
-        output.on('error', (err) => reject(err)); // Reject the promise if an error occurs
+        output.on('finish', () => resolve(decryptedPath)); // Return path of decrypted file
+        output.on('error', (err) => reject(err));
     });
 }
 
-// File Download Endpoint
+// Download file
 app.get('/download/:name', async (req, res) => {
     const fileName = req.params.name;
 
     try {
-        // Query the database for file metadata
-        const result = await pool.query(
-            'SELECT path, iv FROM files WHERE name = $1',
-            [fileName]
-        );
-
-        // Check if the file exists in the database
+        const result = await pool.query('SELECT path, iv FROM files WHERE name = $1', [fileName]);
         if (result.rowCount === 0) {
+            console.error('File not found in database:', fileName);
             return res.status(404).send('File not found.');
         }
 
         const { path: encryptedPath, iv } = result.rows[0];
 
-        // Decrypt the file
-        const decryptedPath = await decryptFile(encryptedPath, iv);
+        console.log('Received filename:', fileName);
+        console.log('File path:', encryptedPath);
+        console.log('IV:', iv);
+        console.log('Encryption key length:', Buffer.from(ENCRYPTION_KEY, 'hex').length);
 
-        // Send the decrypted file to the client
-        res.download(decryptedPath, fileName, (err) => {
-            if (err) {
-                console.error('Error sending file:', err.message);
-                return res.status(500).send('Failed to send file.');
-            }
+        // Validate IV
+        if (!iv || Buffer.from(iv, 'hex').length !== 16) {
+            console.error('Invalid IV:', iv);
+            return res.status(500).send('Invalid IV in database.');
+        }
 
-            // Clean up the decrypted file after sending it
-            fs.unlinkSync(decryptedPath);
+        if (!fs.existsSync(encryptedPath)) {
+            console.error('File not found on disk:', encryptedPath);
+            return res.status(404).send('File not found on disk.');
+        }
+
+        // Decrypt file
+        const decipher = crypto.createDecipheriv(
+            'aes-256-cbc',
+            Buffer.from(ENCRYPTION_KEY, 'hex'),
+            Buffer.from(iv, 'hex')
+        );
+
+        const decryptedPath = encryptedPath.replace('.enc', ''); // Adjust if necessary
+        const input = fs.createReadStream(encryptedPath);
+        const output = fs.createWriteStream(decryptedPath);
+
+        input.pipe(decipher).pipe(output);
+
+        output.on('finish', () => {
+            console.log('Decryption successful, sending file:', decryptedPath);
+
+            res.download(decryptedPath, fileName, (err) => {
+                if (err) {
+                    console.error('Error sending file:', err.message);
+                    return res.status(500).send('Failed to send file.');
+                }
+
+                fs.unlinkSync(decryptedPath); // Clean up decrypted file
+            });
+        });
+
+        output.on('error', (err) => {
+            console.error('Error during decryption:', err.message);
+            res.status(500).send('Failed to decrypt file.');
         });
     } catch (err) {
-        console.error('Error during file download:', err.message);
+        console.error('Unhandled error during file download:', err.message);
         res.status(500).send('Failed to download file.');
     }
 });

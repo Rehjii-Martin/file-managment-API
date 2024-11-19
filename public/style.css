@@ -124,3 +124,47 @@ details[open] summary {
     padding: 10px;
     margin-top: 10px;
 }
+
+/* Scrollable list */
+.scrollable-list {
+    max-height: 300px; /* Adjust the height as needed */
+    overflow-y: auto; /* Enable vertical scrolling */
+    border: 1px solid #ccc; /* Optional: Add a border for better visual separation */
+    padding: 10px; /* Optional: Add padding for better readability */
+    background-color: #f38fff; /* Optional: Light background for distinction */
+    border-radius: 5px; /* Optional: Rounded corners */
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* Optional: Add shadow for aesthetics */
+}
+
+.scrollable-list ul {
+    list-style: none; /* Remove default bullet points */
+    padding: 0; /* Remove default padding */
+    margin: 0; /* Remove default margin */
+}
+
+.scrollable-list li {
+    background-color: #f29fff;
+    margin: 5px 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+}
+
+.scrollable-list li span {
+    display: block; /* Display each field as a block */
+    margin: 2px 0;
+}
+
+.scrollable-list li span.label {
+    font-weight: bold;
+    color: #555;
+}
+
+.scrollable-list.hidden {
+    max-height: 0; /* Collapsed height */
+    opacity: 0; /* Fade out */
+    overflow: hidden; /* Prevent content from spilling out */
+}

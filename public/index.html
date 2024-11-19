@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>File Management System</title>
     <script defer src="/app.js"></script>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/style.css" />
   </head>
 
   <body>
@@ -34,10 +34,18 @@
       <section id="app-section" class="card" style="display: none">
         <h2>File Operations</h2>
         <div class="button-group">
-          <button onclick="listFiles()" class="button">Retrieve List</button>
+          <button onclick="retrieveList()" class="button">Retrieve List</button>
           <button onclick="logout()" class="button danger">Logout</button>
         </div>
-        <pre id="list-response" class="response hidden"></pre>
+        <pre
+          id="list-response"
+          style="
+            display: none;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+          "
+        ></pre>
 
         <!-- Add File Section -->
         <details>
@@ -55,10 +63,10 @@
         <!-- Download File Section -->
         <details>
           <summary>Download File</summary>
-          <form id="download-file-form" onsubmit="downloadFile(event)">
-            <label for="download-name">File Name:</label>
-            <input type="text" id="download-name" class="input" required />
-            <button type="submit" class="button primary">Download</button>
+          <form id="download-form" onsubmit="downloadFile(event)">
+            <label for="file-name">Enter file name to download:</label>
+            <input type="text" id="file-name" name="file-name" required />
+            <button type="submit">Download</button>
           </form>
           <p id="download-response" class="response"></p>
         </details>
