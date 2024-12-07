@@ -133,6 +133,7 @@ Headers: Authorization: Bearer
 
 ## Future Enhancements
 
+- Refactor "Add File" element to include more functionality
 - Implement user-specific file management.
 - Integrate cloud storage for scalability.
 - Deprecate or enhance the "Add File" endpoint to support encryption and uploading placeholder files.
